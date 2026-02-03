@@ -1,0 +1,85 @@
+services:
+  db:
+    image: postgis/postgis:15-3.3
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ree_atlas}
+      POSTGRES_USER: ${POSTGRES_USER:-ree}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ree}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./apps/api
+    env_file:
+      - ./infra/.env
+    environment:
+      GDAL_MEM_ENABLE_OPEN: "YES"
+      DATABASE_URL: ${DATABASE_URL:-postgresql://ree:ree@db:5432/ree_atlas}
+      DATA_DIR: ${DATA_DIR:-/app/data}
+      STAC_API_URL: ${STAC_API_URL:-https://planetarycomputer.microsoft.com/api/stac/v1}
+      STAC_COLLECTION_S2: ${STAC_COLLECTION_S2:-sentinel-2-l2a}
+      STAC_COLLECTION_DEM: ${STAC_COLLECTION_DEM:-cop-dem-glo-30}
+      MAX_AOI_KM2: ${MAX_AOI_KM2:-2500}
+      ENABLE_ASYNC_QUEUE: ${ENABLE_ASYNC_QUEUE:-false}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  web:
+    build:
+      context: ./apps/web
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    command: ["npm", "run", "dev", "--", "-H", "0.0.0.0"]
+
+  redis:
+    image: redis:7-alpine
+    profiles: ["async"]
+    ports:
+      - "6379:6379"
+
+  worker:
+    build:
+      context: ./apps/api
+    env_file:
+      - ./infra/.env
+    environment:
+      GDAL_MEM_ENABLE_OPEN: "YES"
+      DATABASE_URL: ${DATABASE_URL:-postgresql://ree:ree@db:5432/ree_atlas}
+      DATA_DIR: ${DATA_DIR:-/app/data}
+      STAC_API_URL: ${STAC_API_URL:-https://planetarycomputer.microsoft.com/api/stac/v1}
+      STAC_COLLECTION_S2: ${STAC_COLLECTION_S2:-sentinel-2-l2a}
+      STAC_COLLECTION_DEM: ${STAC_COLLECTION_DEM:-cop-dem-glo-30}
+      MAX_AOI_KM2: ${MAX_AOI_KM2:-2500}
+      ENABLE_ASYNC_QUEUE: ${ENABLE_ASYNC_QUEUE:-false}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: ["rq", "worker", "runs"]
+    profiles: ["async"]
+
+volumes:
+  db_data:

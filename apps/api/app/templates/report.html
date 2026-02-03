@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>REE Atlas India Report</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; color: #222; }
+    h1 { margin-bottom: 8px; }
+    .meta { font-size: 14px; color: #555; margin-bottom: 16px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    img { width: 100%; border: 1px solid #ddd; border-radius: 6px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    th, td { border: 1px solid #ddd; padding: 8px; font-size: 12px; }
+    th { background: #f5f5f5; text-align: left; }
+    .disclaimer { font-size: 12px; color: #666; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <h1>REE Atlas India – Run Report</h1>
+  <div class="meta">
+    <div>Run ID: {{ run.id }}</div>
+    <div>Mode: {{ run.mode }}</div>
+    <div>Status: {{ run.status }}</div>
+    <div>Created: {{ run.created_at }}</div>
+  </div>
+
+  <div class="grid">
+    <div>
+      <h3>Prospectivity Overlay</h3>
+      {% if overlay_b64 %}
+      <img src="data:image/png;base64,{{ overlay_b64 }}" alt="Overlay" />
+      {% endif %}
+    </div>
+    <div>
+      <h3>Sentinel Preview</h3>
+      {% if sentinel_b64 %}
+      <img src="data:image/png;base64,{{ sentinel_b64 }}" alt="Sentinel" />
+      {% endif %}
+    </div>
+    <div>
+      <h3>DEM Hillshade</h3>
+      {% if hillshade_b64 %}
+      <img src="data:image/png;base64,{{ hillshade_b64 }}" alt="Hillshade" />
+      {% endif %}
+    </div>
+  </div>
+
+  <h3>Targets</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>ID</th>
+        <th>Area (km²)</th>
+        <th>Mean Score</th>
+        <th>Max Score</th>
+        <th>Distance to Road (m)</th>
+        <th>Evidence</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in targets %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ t.id }}</td>
+        <td>{{ "%.2f"|format(t.area_km2) }}</td>
+        <td>{{ "%.3f"|format(t.mean_score) }}</td>
+        <td>{{ "%.3f"|format(t.max_score) }}</td>
+        <td>{{ "%.1f"|format(t.distance_to_road_m or 0) }}</td>
+        <td>{{ ", ".join(t.evidence_summary or []) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="disclaimer">
+    This report provides an explainable prospectivity map for prioritization only. It does not confirm a deposit.
+  </div>
+</body>
+</html>
