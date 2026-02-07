@@ -152,6 +152,11 @@ These can be passed in the `params` object of `POST /runs`:
 - Backend tests: `pytest`
 - Formatting: `ruff` + `black`
 
+## Documentation
+
+- `docs/DEVELOPMENT.md`: local dev, configuration, troubleshooting
+- `docs/ARCHITECTURE.md`: system overview and pipeline internals
+
 ---
 
 Built with open data and open‑source software.
